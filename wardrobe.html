@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kastcollage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EDE7DD; --board:#E4DACB; --boarddot:#C9A66B; --ink:#3F3B36; --inkmuted:#83796B;
+    --sage:#7C8F76; --sagedark:#5C6E58; --brass:#C9A66B; --clay:#B24D3B; --claylight:#F3E1DB;
+    --white:#FFFFFF; --line:rgba(63,59,54,0.12);
+  }
+  * { box-sizing: border-box; }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Work Sans', sans-serif; padding:20px;
+  }
+  .wrap{ max-width:1000px; margin:0 auto; }
+  .font-display{ font-family:'Fraunces', serif; font-style:italic; }
+  .header{ display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+  .logo{ width:40px; height:40px; border-radius:12px; background:var(--sage); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#fff; font-size:20px; }
+  .title{ font-size:22px; line-height:1.1; }
+  .subtitle{ font-size:13px; color:var(--inkmuted); }
+  .error-banner{ display:flex; align-items:center; justify-content:space-between; background:var(--claylight); color:var(--clay); padding:8px 12px; border-radius:10px; font-size:13px; margin-bottom:14px; }
+  .error-banner button{ background:none; border:none; cursor:pointer; color:var(--clay); font-size:14px; }
+  .layout{ display:flex; gap:16px; flex-wrap:wrap; }
+  .sidebar{ width:280px; flex-shrink:0; }
+  .tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .tab{ font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid var(--line); background:var(--white); color:var(--ink); cursor:pointer; }
+  .tab.active{ background:var(--sagedark); color:#fff; border-color:var(--sagedark); }
+  .upload-btn{ width:100%; background:var(--sage); color:#fff; border:none; border-radius:10px; padding:9px 12px; font-size:13px; font-weight:500; cursor:pointer; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .upload-btn:hover{ opacity:.9; }
+  .wardrobe-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(84px,1fr)); gap:8px; max-height:380px; overflow-y:auto; padding-right:4px; }
+  .empty-note{ grid-column:1/-1; font-size:13px; color:var(--inkmuted); padding:18px 4px; }
+  .item-card{ position:relative; background:var(--white); border-radius:8px; padding:6px; cursor:grab; touch-action:none; border:1px solid var(--line); }
+  .item-card:hover{ box-shadow:0 6px 14px rgba(63,59,54,0.18); }
+  .item-card img{ width:100%; height:72px; object-fit:contain; display:block; pointer-events:none; }
+  .item-del{ position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:999px; background:var(--clay); color:#fff; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; line-height:1; }
+  .canvas-toolbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:8px; }
+  .hint{ font-size:13px; color:var(--inkmuted); }
+  .toolbar-actions{ display:flex; align-items:center; gap:8px; }
+  .btn{ font-size:12px; padding:6px 10px; border-radius:8px; border:1px solid var(--line); background:var(--white); color:var(--ink); cursor:pointer; }
+  .btn-primary{ border:none; background:var(--sagedark); color:#fff; display:flex; align-items:center; gap:6px; }
+  .btn-primary:disabled{ background:var(--line); cursor:default; }
+  .name-input{ font-size:12px; padding:6px 8px; border-radius:8px; border:1px solid var(--line); width:150px; }
+  .icon-btn{ width:30px; height:30px; border-radius:999px; background:var(--sagedark); color:#fff; display:flex; align-items:center; justify-content:center; border:none; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.25); font-size:14px; }
+  .icon-btn.danger{ background:var(--clay); }
+  .board{ position:relative; width:100%; height:420px; border-radius:14px; background:var(--board); background-image:radial-gradient(var(--boarddot) 1.5px, transparent 1.5px); background-size:20px 20px; border:1px solid var(--line); overflow:hidden; }
+  .board-empty{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--inkmuted); font-size:13px; padding:24px; text-align:center; }
+  .canvas-item{ position:absolute; touch-action:none; cursor:grab; }
+  .canvas-item .card{ background:#fff; padding:6px; border-radius:4px; box-shadow:0 8px 18px rgba(63,59,54,0.22); }
+  .canvas-item.selected .card{ box-shadow:0 0 0 2px var(--sagedark), 0 10px 20px rgba(63,59,54,0.28); }
+  .canvas-item img{ width:108px; height:108px; object-fit:contain; display:block; pointer-events:none; }
+  .tape{ position:absolute; top:-8px; left:50%; width:34px; height:14px; background:rgba(255,255,255,0.55); transform:translateX(-50%) rotate(-3deg); box-shadow:0 1px 2px rgba(0,0,0,0.15); }
+  .item-toolbar{ position:absolute; top:-38px; left:50%; transform:translateX(-50%); display:flex; gap:6px; }
+  .ghost{ position:fixed; width:80px; height:80px; object-fit:contain; pointer-events:none; opacity:.85; z-index:9999; filter:drop-shadow(0 6px 10px rgba(0,0,0,.3)); }
+  .outfits-section{ margin-top:20px; }
+  .outfits-title{ display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:16px; }
+  .outfits-strip{ display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
+  .outfit-card{ flex-shrink:0; width:130px; background:var(--white); border-radius:10px; border:1px solid var(--line); padding:8px; }
+  .outfit-preview{ display:block; width:100%; height:110px; position:relative; background:var(--board); border-radius:8px; border:none; cursor:pointer; overflow:hidden; padding:0; }
+  .outfit-preview img{ position:absolute; width:38px; height:38px; object-fit:contain; }
+  .outfit-meta{ display:flex; align-items:center; justify-content:space-between; margin-top:6px; }
+  .outfit-name{ font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:95px; }
+  .outfit-del{ background:none; border:none; cursor:pointer; color:var(--clay); font-size:13px; }
+  .footer-note{ font-size:11px; color:var(--inkmuted); margin-top:16px; }
+  @media (max-width:640px){ .sidebar{ width:100%; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="logo">&#128085;</div>
+    <div>
+      <div class="title font-display">Kastcollage</div>
+      <div class="subtitle">Upload je kleren, sleep ze op het bord en ontdek nieuwe combinaties.</div>
+    </div>
+  </div>
+
+  <div id="error-banner" class="error-banner" style="display:none;">
+    <span id="error-text"></span>
+    <button onclick="dismissError()">&times;</button>
+  </div>
+
+  <div class="layout">
+    <div class="sidebar">
+      <div class="tabs" id="tabs"></div>
+      <input id="file-input" type="file" accept="image/*" multiple style="display:none;" />
+      <button class="upload-btn" id="upload-btn">Foto toevoegen</button>
+      <div class="wardrobe-grid" id="wardrobe-grid"></div>
+    </div>
+
+    <div style="flex:1; min-width:280px;">
+      <div class="canvas-toolbar">
+        <div class="hint">Sleep kledingstukken hierheen om een outfit te bouwen</div>
+        <div class="toolbar-actions" id="toolbar-actions"></div>
+      </div>
+      <div class="board" id="board"></div>
+    </div>
+  </div>
+
+  <div class="outfits-section">
+    <div class="outfits-title font-display">Bewaarde outfits</div>
+    <div id="outfits-empty" class="hint" style="display:none;">Nog geen outfits bewaard. Stel er eentje samen op het bord hierboven.</div>
+    <div class="outfits-strip" id="outfits-strip"></div>
+  </div>
+
+  <div class="footer-note">Je foto's en outfits worden automatisch bewaard in je browser, ook als je terugkomt. Dit is lokaal per browser/apparaat.</div>
+</div>
+
+<script>
+const CATEGORIES = [
+  { key:'tops', label:'Tops' },
+  { key:'bottoms', label:'Broeken & rokken' },
+  { key:'outerwear', label:'Jassen' },
+  { key:'shoes', label:'Schoenen' },
+  { key:'accessories', label:'Accessoires' },
+  { key:'other', label:'Overig' },
+];
+
+let items = [];
+let outfits = [];
+let activeCategory = 'tops';
+let canvasItems = [];
+let selectedUid = null;
+let savingName = false;
+let outfitNameDraft = '';
+let ghost = null;
+
+function uid(prefix){ return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+
+function loadState(){
+  try{
+    const i = localStorage.getItem('wardrobe-items');
+    const o = localStorage.getItem('wardrobe-outfits');
+    if (i) items = JSON.parse(i);
+    if (o) outfits = JSON.parse(o);
+  }catch(e){ console.error(e); }
+}
+function saveItems(){
+  try{ localStorage.setItem('wardrobe-items', JSON.stringify(items)); }
+  catch(e){ showError('Opslaan is niet gelukt. Mogelijk zit je browseropslag vol.'); }
+}
+function saveOutfits(){
+  try{ localStorage.setItem('wardrobe-outfits', JSON.stringify(outfits)); }
+  catch(e){ showError('Opslaan is niet gelukt. Mogelijk zit je browseropslag vol.'); }
+}
+function showError(msg){
+  document.getElementById('error-text').textContent = msg;
+  document.getElementById('error-banner').style.display = 'flex';
+}
+function dismissError(){ document.getElementById('error-banner').style.display = 'none'; }
+
+function resizeImage(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error('read failed'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error('img failed'));
+      img.onload = ()=>{
+        const maxDim = 620;
+        let { width, height } = img;
+        if (width>height && width>maxDim){ height = Math.round(height*maxDim/width); width = maxDim; }
+        else if (height>=width && height>maxDim){ width = Math.round(width*maxDim/height); height = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img,0,0,width,height);
+        const isPng = file.type.includes('png');
+        resolve(canvas.toDataURL(isPng? 'image/png':'image/jpeg', 0.85));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleFiles(fileList){
+  const files = Array.from(fileList).slice(0,12);
+  const newItems = [];
+  for (const f of files){
+    if (!f.type.startsWith('image/')) continue;
+    try{
+      const dataUrl = await resizeImage(f);
+      newItems.push({ id: uid('item'), name: f.name.replace(/\.[^.]+$/, ''), category: activeCategory, dataUrl, createdAt: Date.now() });
+    }catch(e){ showError('Uploaden is niet gelukt. Probeer een andere foto.'); }
+  }
+  if (newItems.length){ items = items.concat(newItems); saveItems(); renderWardrobe(); }
+  document.getElementById('file-input').value = '';
+}
+
+function deleteItem(id){
+  items = items.filter(i=>i.id!==id);
+  canvasItems = canvasItems.filter(ci=>ci.itemId!==id);
+  saveItems();
+  renderWardrobe(); renderBoard();
+}
+
+function itemsById(){ const map={}; items.forEach(i=>map[i.id]=i); return map; }
+
+function renderTabs(){
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  CATEGORIES.forEach(cat=>{
+    const count = items.filter(i=>i.category===cat.key).length;
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (cat.key===activeCategory ? ' active' : '');
+    btn.textContent = cat.label + (count>0 ? ' · '+count : '');
+    btn.onclick = ()=>{ activeCategory = cat.key; renderTabs(); renderWardrobe(); document.getElementById('upload-btn').textContent = 'Foto toevoegen aan ' + cat.label; };
+    tabs.appendChild(btn);
+  });
+}
+
+function renderWardrobe(){
+  const grid = document.getElementById('wardrobe-grid');
+  grid.innerHTML = '';
+  const list = items.filter(i=>i.category===activeCategory);
+  if (list.length===0){
+    const div = document.createElement('div');
+    div.className = 'empty-note';
+    div.textContent = 'Nog niets hier. Voeg een foto toe om te beginnen.';
+    grid.appendChild(div);
+    return;
+  }
+  list.forEach(item=>{
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.title = 'Sleep naar het bord';
+    const img = document.createElement('img');
+    img.src = item.dataUrl; img.alt = item.name; img.draggable = false;
+    const del = document.createElement('button');
+    del.className = 'item-del'; del.innerHTML = '&times;'; del.setAttribute('aria-label','Verwijderen');
+    del.onpointerdown = (e)=>e.stopPropagation();
+    del.onclick = ()=>deleteItem(item.id);
+    card.appendChild(img); card.appendChild(del);
+    card.onpointerdown = (e)=>startGhostDrag(item, e);
+    grid.appendChild(card);
+  });
+}
+
+function startGhostDrag(item, e){
+  e.preventDefault();
+  ghost = { item, x: e.clientX, y: e.clientY, el: null };
+  const el = document.createElement('img');
+  el.src = item.dataUrl; el.className = 'ghost';
+  el.style.left = (e.clientX-40)+'px'; el.style.top = (e.clientY-40)+'px';
+  document.body.appendChild(el);
+  ghost.el = el;
+
+  const move = (ev)=>{
+    ghost.x = ev.clientX; ghost.y = ev.clientY;
+    el.style.left = (ev.clientX-40)+'px'; el.style.top = (ev.clientY-40)+'px';
+  };
+  const up = (ev)=>{
+    const board = document.getElementById('board');
+    const rect = board.getBoundingClientRect();
+    if (ev.clientX>=rect.left && ev.clientX<=rect.right && ev.clientY>=rect.top && ev.clientY<=rect.bottom){
+      const xPct = Math.min(92, Math.max(8, ((ev.clientX-rect.left)/rect.width)*100));
+      const yPct = Math.min(88, Math.max(8, ((ev.clientY-rect.top)/rect.height)*100));
+      const rotation = Math.round(Math.random()*12-6);
+      const maxZ = canvasItems.reduce((m,c)=>Math.max(m,c.z),0);
+      canvasItems.push({ uid: uid('c'), itemId: ghost.item.id, xPct, yPct, rotation, z: maxZ+1 });
+      renderBoard();
+      updateSaveButtonState();
+    }
+    el.remove();
+    ghost = null;
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+}
+
+function renderBoard(){
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  board.onclick = ()=>{ selectedUid = null; renderBoard(); };
+  if (canvasItems.length===0){
+    const empty = document.createElement('div');
+    empty.className = 'board-empty';
+    empty.textContent = 'Sleep kledingstukken vanuit de kast hiernaartoe om te beginnen.';
+    board.appendChild(empty);
+    return;
+  }
+  const map = itemsById();
+  canvasItems.forEach(ci=>{
+    const item = map[ci.itemId];
+    if (!item) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'canvas-item' + (selectedUid===ci.uid ? ' selected' : '');
+    wrap.style.left = ci.xPct+'%'; wrap.style.top = ci.yPct+'%';
+    wrap.style.transform = 'translate(-50%,-50%) rotate('+ci.rotation+'deg)';
+    wrap.style.zIndex = ci.z;
+
+    const cardDiv = document.createElement('div');
+    cardDiv.className = 'card';
+    const img = document.createElement('img');
+    img.src = item.dataUrl; img.alt = item.name; img.draggable = false;
+    cardDiv.appendChild(img);
+
+    const tape = document.createElement('div');
+    tape.className = 'tape';
+
+    wrap.appendChild(cardDiv);
+    wrap.appendChild(tape);
+
+    if (selectedUid===ci.uid){
+      const toolbar = document.createElement('div');
+      toolbar.className = 'item-toolbar';
+      const rotateBtn = document.createElement('button');
+      rotateBtn.className = 'icon-btn'; rotateBtn.innerHTML = '&#8635;'; rotateBtn.title = 'Draaien';
+      rotateBtn.onclick = (e)=>{ e.stopPropagation(); ci.rotation += 15; renderBoard(); };
+      const delBtn = document.createElement('button');
+      delBtn.className = 'icon-btn danger'; delBtn.innerHTML = '&times;'; delBtn.title = 'Van bord halen';
+      delBtn.onclick = (e)=>{ e.stopPropagation(); canvasItems = canvasItems.filter(c=>c.uid!==ci.uid); selectedUid=null; renderBoard(); updateSaveButtonState(); };
+      toolbar.appendChild(rotateBtn); toolbar.appendChild(delBtn);
+      wrap.appendChild(toolbar);
+    }
+
+    wrap.onpointerdown = (e)=>startCanvasDrag(ci, e);
+    wrap.onclick = (e)=>{ e.stopPropagation(); selectedUid = ci.uid; renderBoard(); };
+
+    board.appendChild(wrap);
+  });
+}
+
+function startCanvasDrag(ci, e){
+  e.stopPropagation();
+  const board = document.getElementById('board');
+  const rect = board.getBoundingClientRect();
+  const offsetX = e.clientX - (rect.left + (ci.xPct/100)*rect.width);
+  const offsetY = e.clientY - (rect.top + (ci.yPct/100)*rect.height);
+  const maxZ = canvasItems.reduce((m,c)=>Math.max(m,c.z),0);
+  ci.z = maxZ+1;
+  selectedUid = ci.uid;
+  renderBoard();
+
+  const move = (ev)=>{
+    const r = board.getBoundingClientRect();
+    ci.xPct = Math.min(95, Math.max(5, ((ev.clientX-offsetX-r.left)/r.width)*100));
+    ci.yPct = Math.min(95, Math.max(5, ((ev.clientY-offsetY-r.top)/r.height)*100));
+    renderBoard();
+  };
+  const up = ()=>{
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+}
+
+function clearCanvas(){
+  canvasItems = []; selectedUid = null; savingName = false; outfitNameDraft = '';
+  renderBoard(); renderToolbar();
+}
+
+function saveOutfit(){
+  if (canvasItems.length===0) return;
+  const name = outfitNameDraft.trim() || ('Outfit ' + (outfits.length+1));
+  outfits.push({ id: uid('outfit'), name, canvasItems: JSON.parse(JSON.stringify(canvasItems)), createdAt: Date.now() });
+  saveOutfits();
+  outfitNameDraft = ''; savingName = false;
+  renderToolbar(); renderOutfits();
+}
+
+function loadOutfit(outfit){
+  canvasItems = outfit.canvasItems.map(c=>Object.assign({}, c, { uid: uid('c') }));
+  selectedUid = null;
+  renderBoard(); updateSaveButtonState();
+}
+
+function deleteOutfit(id){
+  outfits = outfits.filter(o=>o.id!==id);
+  saveOutfits();
+  renderOutfits();
+}
+
+function updateSaveButtonState(){ renderToolbar(); }
+
+function renderToolbar(){
+  const box = document.getElementById('toolbar-actions');
+  box.innerHTML = '';
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'btn'; clearBtn.textContent = 'Bord wissen';
+  clearBtn.onclick = clearCanvas;
+  box.appendChild(clearBtn);
+
+  if (!savingName){
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.textContent = 'Outfit bewaren';
+    saveBtn.disabled = canvasItems.length===0;
+    saveBtn.onclick = ()=>{ savingName = true; renderToolbar(); };
+    box.appendChild(saveBtn);
+  } else {
+    const input = document.createElement('input');
+    input.className = 'name-input'; input.placeholder = 'Naam voor deze outfit';
+    input.value = outfitNameDraft;
+    input.oninput = (e)=>{ outfitNameDraft = e.target.value; };
+    input.onkeydown = (e)=>{ if (e.key==='Enter') saveOutfit(); };
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'icon-btn'; confirmBtn.innerHTML = '&#10003;'; confirmBtn.title = 'Bewaren';
+    confirmBtn.onclick = saveOutfit;
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'icon-btn danger'; cancelBtn.innerHTML = '&times;'; cancelBtn.title = 'Annuleren';
+    cancelBtn.onclick = ()=>{ savingName=false; outfitNameDraft=''; renderToolbar(); };
+    box.appendChild(input); box.appendChild(confirmBtn); box.appendChild(cancelBtn);
+    setTimeout(()=>input.focus(), 0);
+  }
+}
+
+function renderOutfits(){
+  const strip = document.getElementById('outfits-strip');
+  const emptyMsg = document.getElementById('outfits-empty');
+  strip.innerHTML = '';
+  if (outfits.length===0){ emptyMsg.style.display='block'; return; }
+  emptyMsg.style.display='none';
+  const map = itemsById();
+  outfits.forEach(outfit=>{
+    const card = document.createElement('div');
+    card.className = 'outfit-card';
+
+    const preview = document.createElement('button');
+    preview.className = 'outfit-preview'; preview.title = 'Laad deze outfit op het bord';
+    outfit.canvasItems.forEach(ci=>{
+      const item = map[ci.itemId];
+      if (!item) return;
+      const img = document.createElement('img');
+      img.src = item.dataUrl;
+      img.style.left = ci.xPct+'%'; img.style.top = ci.yPct+'%';
+      img.style.transform = 'translate(-50%,-50%) rotate('+ci.rotation+'deg)';
+      preview.appendChild(img);
+    });
+    preview.onclick = ()=>loadOutfit(outfit);
+
+    const meta = document.createElement('div');
+    meta.className = 'outfit-meta';
+    const name = document.createElement('span');
+    name.className = 'outfit-name'; name.textContent = outfit.name;
+    const del = document.createElement('button');
+    del.className = 'outfit-del'; del.innerHTML = '&times;'; del.setAttribute('aria-label','Outfit verwijderen');
+    del.onclick = ()=>deleteOutfit(outfit.id);
+    meta.appendChild(name); meta.appendChild(del);
+
+    card.appendChild(preview); card.appendChild(meta);
+    strip.appendChild(card);
+  });
+}
+
+document.getElementById('upload-btn').onclick = ()=>document.getElementById('file-input').click();
+document.getElementById('file-input').onchange = (e)=>{ if (e.target.files) handleFiles(e.target.files); };
+document.getElementById('upload-btn').textContent = 'Foto toevoegen aan Tops';
+
+loadState();
+renderTabs();
+renderWardrobe();
+renderBoard();
+renderToolbar();
+renderOutfits();
+</script>
+</body>
+</html>
